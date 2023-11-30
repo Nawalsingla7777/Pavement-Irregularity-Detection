@@ -1,0 +1,62 @@
+# Step 1: Import Necessary Libraries
+import cv2
+import os
+import numpy as np
+import pandas as pd
+import mahotas as mh
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+
+# Step 2: Data Preprocessing and Feature Extraction
+def preprocess_and_extract_features(image_path):
+    image = cv2.imread(image_path)
+    desired_size = (224, 224)
+    image_resized = cv2.resize(image, desired_size)
+    denoised_image = cv2.fastNlMeansDenoisingColored(image_resized, None, 10, 10, 7, 21)
+    grayscale_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2GRAY)
+    
+    # Feature extraction - Calculate Local Binary Patterns (LBP) features using Mahotas
+    lbp_image = mh.features.lbp(grayscale_image, radius=1, points=8, ignore_zeros=True)
+    
+    return lbp_image  # Return the extracted feature
+
+# Step 3: Data Collection
+dataset_path = "path_to_your_dataset_folder"  # Specify the path to the folder containing your images
+
+image_paths = [os.path.join(dataset_path, file) for file in os.listdir(dataset_path) if file.endswith(('jpeg', 'jpg', 'png'))]
+
+# Extract features for each image in the dataset
+feature_vectors = []
+for path in image_paths:
+    feature = preprocess_and_extract_features(path)
+    feature_vectors.append(feature)
+
+# Step 4: Create a DataFrame
+feature_df = pd.DataFrame(feature_vectors)
+
+# Step 5: Optional - Feature Scaling
+scaler = StandardScaler()
+scaled_features = scaler.fit_transform(feature_df)
+
+# Step 6: Optional - Labels (if available)
+# Replace 'labels' with your actual labels or classes
+labels = [0, 1, 1, 0]  # Example labels for the new dataset
+# Update labels according to the classes in your dataset
+
+label_df = pd.DataFrame({'label': labels})
+
+# Step 7: Split Data (if you have labels)
+X_train, X_test, y_train, y_test = train_test_split(scaled_features, labels, test_size=0.2, random_state=42)
+
+# Step 8: Model Training (Use the model of your choice)
+model = SVC(kernel='linear')  # Example: Support Vector Machine
+model.fit(X_train, y_train)
+
+# Step 9: Make Predictions
+y_pred = model.predict(X_test)
+
+# Step 10: Evaluate Model
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
